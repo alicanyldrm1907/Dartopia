@@ -1,0 +1,210 @@
+using System.Collections;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using Photon.Pun;
+using Photon.Realtime;
+using TMPro;
+using System.Collections.Generic;
+
+public class MenuManager : MonoBehaviourPunCallbacks
+{
+    [SerializeField] private GameObject dart, serverControlPanel, backButton, settings;
+    [SerializeField] private Animator Canvas;
+    [SerializeField] private TextMeshProUGUI serverControl, findedPlayers;
+    public static GameMode gameMode;
+    public static bool isMultiPlayer;
+    List<GameObject> darts;
+    List<RoomInfo> rooms;
+    void Start()
+    {
+        SetLanguage();
+        darts = new List<GameObject>();
+        StartCoroutine(CameraMovement());
+    }
+
+    IEnumerator CameraMovement()
+    {
+        while (Vector3.Distance(Camera.main.transform.position, new Vector3(-66.8f, 17.9f, 6.1f)) > 0.1f) 
+        {
+            Camera.main.transform.position = Vector3.MoveTowards(Camera.main.transform.position, new Vector3(-66.8f, 17.9f, 6.1f), 40 * Time.deltaTime);
+            if (Vector3.Distance(Camera.main.transform.position, new Vector3(-66.8f, 17.9f, 6.1f)) < 20)
+                dart.transform.position = Vector3.MoveTowards(dart.transform.position, new Vector3(-71.92f, 17.94f, -2.63f), 400 * Time.deltaTime);
+
+            yield return null;
+        }
+        BackMenu();
+    }
+    public override void OnConnectedToMaster()
+    {
+        serverControlPanel.SetActive(false);
+        Canvas.SetInteger("MultiPlayer", 2);
+        Canvas.SetInteger("SinglePlayer", 1);
+        PhotonNetwork.JoinLobby();
+    }
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        serverControlPanel.SetActive(false);
+        Canvas.SetInteger("MultiPlayer", 1);
+    }
+    public override void OnJoinedRoom()
+    {
+        findedPlayers.gameObject.SetActive(true);
+        backButton.gameObject.SetActive(true);
+        backButton.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = findedPlayers.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][backButton.name];
+        findedPlayers.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][findedPlayers.name] + " " + PhotonNetwork.CurrentRoom.PlayerCount + "/" + PhotonNetwork.CurrentRoom.MaxPlayers;
+        if (PhotonNetwork.CurrentRoom.PlayerCount == PhotonNetwork.CurrentRoom.MaxPlayers) LoadScene();
+    }
+    public override void OnPlayerEnteredRoom(Player newPlayer)
+    {
+        findedPlayers.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][findedPlayers.name] + " " + PhotonNetwork.CurrentRoom.PlayerCount + "/" + PhotonNetwork.CurrentRoom.MaxPlayers;
+        if (PhotonNetwork.CurrentRoom.PlayerCount == PhotonNetwork.CurrentRoom.MaxPlayers) LoadScene();
+    }
+    public override void OnLeftRoom()
+    {
+        findedPlayers.gameObject.SetActive(false);
+        serverControlPanel.SetActive(false);
+    }
+    public override void OnPlayerLeftRoom(Player otherPlayer)
+    {
+        findedPlayers.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][findedPlayers.name] + " " + PhotonNetwork.CurrentRoom.PlayerCount + "/" + PhotonNetwork.CurrentRoom.MaxPlayers;
+    }
+    public override void OnRoomListUpdate(List<RoomInfo> roomList) { rooms = roomList; }
+
+    public void PlayGame() 
+    { 
+        Canvas.SetInteger("StartPlay", 2); 
+    }
+    public void BackMenu() 
+    { 
+        Canvas.SetInteger("StartPlay", 1); 
+    }
+    public void SinglePlayer() 
+    { 
+        Canvas.SetInteger("SinglePlayer", 1); isMultiPlayer = false; 
+    }
+    public void MultiPlayer() 
+    { 
+        Canvas.SetInteger("MultiPlayer", 1); isMultiPlayer = true; 
+    }
+    public void BackFromMultiPlayer() 
+    { 
+        Canvas.SetInteger("MultiPlayer", 0); 
+        Canvas.SetInteger("SinglePlayer", 0); 
+    }
+    public void ExitGame() 
+    { 
+        Application.Quit(); 
+    }
+    private void LoadScene() 
+    { 
+        SceneManager.LoadScene("Game"); 
+    }
+    public void Settings() 
+    {
+        settings.SetActive(true);
+        settings.transform.GetChild(0).GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][settings.transform.GetChild(0).name];
+        settings.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][settings.transform.GetChild(1).name];
+    }
+    public void BackSettings() { settings.SetActive(false); }
+    public void SelectLanguage(Button button) 
+    {
+        PlayerPrefs.SetString("language", button.name.Substring(button.name.IndexOf("_") + 1, 2));
+        settings.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][settings.transform.GetChild(1).name];
+        SetLanguage();
+    }
+    private void SetLanguage()
+    {
+        Button[] allButtons = FindObjectsByType<Button>(FindObjectsSortMode.InstanceID);
+
+        for (int i = 0; i < allButtons.Length; i++)
+        {
+            if (allButtons[i].transform.GetChild(0).GetComponent<TextMeshProUGUI>() != null && allButtons[i].transform.tag != "Language")
+            {
+                allButtons[i].transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][allButtons[i].name];
+            }
+        }
+    }
+    public void BackFromSinglePlayer()
+    {
+        if (!isMultiPlayer) Canvas.SetInteger("SinglePlayer", 0);
+        else
+        {
+            if (PhotonNetwork.IsConnected || PhotonNetwork.InLobby)
+            {
+                PhotonNetwork.Disconnect();
+                serverControlPanel.SetActive(true);
+                serverControl.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][serverControl.name+"t"];
+            }
+            else Canvas.SetInteger("MultiPlayer", 1);
+        }
+    }
+
+    public void OnlineOrSingleClient(Button button)
+    {
+        if (button.name == "Online")
+        {
+            PhotonNetwork.ConnectUsingSettings();
+            serverControlPanel.SetActive(true);
+            backButton.SetActive(false);
+            serverControl.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Menu"][serverControl.name];
+        }
+        else
+        {
+            Canvas.SetInteger("MultiPlayer", 2);
+            Canvas.SetInteger("SinglePlayer", 1);
+        }
+    }
+    public void EnterGame(Button button)
+    {
+        gameMode = button.name == "LimitedTime" ? GameMode.LimitedTime : GameMode.LimitedShot;
+        serverControlPanel.SetActive(true);
+        StartCoroutine(Dart());
+        serverControl.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Loading"]["Loading"];
+        if (PhotonNetwork.InLobby)
+        {
+            List<RoomInfo> newRoomList = rooms.FindAll(room => room.PlayerCount < room.MaxPlayers && room.IsOpen && room.Name.Contains(gameMode.ToString()));
+            if (newRoomList.Count > 0) PhotonNetwork.JoinRoom(newRoomList[Random.Range(0, newRoomList.Count)].Name);
+            else
+            {
+                string roomName = "Room_" + gameMode.ToString() + "_" + Random.Range(0, 200) + Random.Range(0, 200) + Random.Range(0, 200);
+                PhotonNetwork.CreateRoom(roomName, new RoomOptions { MaxPlayers = 2, IsOpen = true });
+            }
+        }
+        else Invoke(nameof(LoadScene), 2);
+    }
+    public void BackGame() 
+    { 
+        for (int i = 0; i < darts.Count; i++) Destroy(darts[i]);
+        darts.Clear();
+        StopCoroutine(Dart());
+        if (PhotonNetwork.InRoom) PhotonNetwork.LeaveRoom();
+        else
+        {
+            CancelInvoke(nameof(LoadScene));
+            serverControlPanel.SetActive(false);
+        }
+    }
+
+    IEnumerator Dart()
+    {
+        while (serverControlPanel.activeInHierarchy)
+        {
+            float y = Random.Range(15, 21);
+            float z = Random.Range(-5, 0);
+            GameObject dartt = Instantiate(dart, new Vector3(-21.54f, y, z), Quaternion.Euler(0, 0, 90));
+            darts.Add(dartt);
+            StartCoroutine(DartMovement(dartt));
+            yield return new WaitForSeconds(1);
+        }
+    }
+    IEnumerator DartMovement(GameObject dart)
+    {
+        while (dart != null &&dart.transform.position != new Vector3(-71.92f, dart.transform.position.y, dart.transform.position.z))
+        {
+            yield return null;
+            dart.transform.position = Vector3.MoveTowards(dart.transform.position, new Vector3(-71.92f, dart.transform.position.y, dart.transform.position.z), 400 * Time.deltaTime);
+        }
+    }
+
+}
