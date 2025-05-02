@@ -1,0 +1,96 @@
+using Newtonsoft.Json;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class LoadingManager : MonoBehaviour
+{
+    [SerializeField] private GameObject dart;
+    [SerializeField] private TextMeshProUGUI loading;
+    [SerializeField] private TextAsset language;
+
+    public static Dictionary<string, Dictionary<string, Dictionary<string, string>>> languages;
+    void Start()
+    {
+        languages = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, Dictionary<string, string>>>>(language.text);
+        if (!PlayerPrefs.HasKey("language")) SelectLanguage(Application.systemLanguage);
+        loading.text = languages[PlayerPrefs.GetString("language")]["Loading"]["Loading"];
+        StartCoroutine(CameraMovement());
+        InvokeRepeating(nameof(LoadingText), 1, 1);
+        Invoke(nameof(LoadScene), Random.Range(7, 10));
+    }
+
+    IEnumerator CameraMovement()
+    {
+        while (Camera.main.transform.position != new Vector3(-66.8f, 17.9f, 6.1f))
+        {
+            yield return null;
+            Camera.main.transform.position = Vector3.MoveTowards(Camera.main.transform.position, new Vector3(-66.8f, 17.9f, 6.1f), 50 * Time.deltaTime);
+        }
+        StartCoroutine(Dart());
+    }
+
+    IEnumerator Dart()
+    {
+        while (true)
+        {
+            float y = Random.Range(15, 21);
+            float z = Random.Range(-5, 0);
+            GameObject dartt = Instantiate(dart, new Vector3(-21.54f, y, z), Quaternion.Euler(0, 0, 90));
+            StartCoroutine(DartMovement(dartt));
+            yield return new WaitForSeconds(1);
+        }
+    }
+
+    IEnumerator DartMovement(GameObject dart)
+    {
+        while (dart.transform.position != new Vector3(-71.92f, dart.transform.position.y, dart.transform.position.z))
+        {
+            yield return null;
+            dart.transform.position = Vector3.MoveTowards(dart.transform.position, new Vector3(-71.92f, dart.transform.position.y, dart.transform.position.z), 400 * Time.deltaTime);
+        }
+    }
+
+    private void LoadScene() { SceneManager.LoadScene("Menu"); }
+    private void LoadingText()
+    {
+        if (loading.text == languages[PlayerPrefs.GetString("language")]["Loading"]["Loading"] + "...") loading.text = languages[PlayerPrefs.GetString("language")]["Loading"]["Loading"];
+        else loading.text += ".";
+    }
+
+    private void SelectLanguage(SystemLanguage language)
+    {
+        switch(language)
+        {
+            case SystemLanguage.Turkish:
+                PlayerPrefs.SetString("language","tr");
+                break;
+            case SystemLanguage.Spanish:
+                PlayerPrefs.SetString("language", "es");
+                break;
+            case SystemLanguage.Italian:
+                PlayerPrefs.SetString("language", "it");
+                break;
+            case SystemLanguage.French:
+                PlayerPrefs.SetString("language", "fr");
+                break;
+            case SystemLanguage.Portuguese:
+                PlayerPrefs.SetString("language", "pt");
+                break;
+            case SystemLanguage.Ukrainian:
+                PlayerPrefs.SetString("language", "uk");
+                break;
+            case SystemLanguage.Russian:
+                PlayerPrefs.SetString("language", "ru");
+                break;
+            case SystemLanguage.Norwegian:
+                PlayerPrefs.SetString("language", "no");
+                break;
+            default:
+                PlayerPrefs.SetString("language", "en");
+                break;
+        }
+    }
+}
