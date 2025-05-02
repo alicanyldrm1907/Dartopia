@@ -1,1 +1,31 @@
+using UnityEngine;
+using UnityEngine.Events;
+using Photon.Pun;
+using Photon.Realtime;
+using NUnit.Framework;
+using System.Collections.Generic;
 
+public class DartBoardPoint : MonoBehaviour
+{
+    [SerializeField] private UnityEvent pointOfline, pointOnline;
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if ((collision.transform.tag == "DartBlue" || collision.transform.tag == "DartRed"))
+        {
+            short winpoint = short.Parse(gameObject.name.Substring(gameObject.name.IndexOf('_') + 1, gameObject.name.Length - gameObject.name.IndexOf('_') - 1));
+
+            if (gameObject.name.Contains("x3")) winpoint = (short)(winpoint * 3);
+            else if (gameObject.name.Contains("x2")) winpoint = (short)(winpoint * 2);
+
+            if (collision.transform.tag == "DartBlue") GameObject.Find("GameManager").GetComponent<GameManager>().score1 += winpoint;
+            else if (collision.transform.tag == "DartRed") GameObject.Find("GameManager").GetComponent<GameManager>().score2 += winpoint;
+
+            if (PhotonNetwork.InRoom) pointOnline.Invoke();
+            else pointOfline.Invoke();
+
+            Destroy(collision.gameObject, 3);
+        }
+    }
+}
+ 
