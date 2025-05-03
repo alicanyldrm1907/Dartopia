@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 public class DartBoardPoint : MonoBehaviour
 {
-    [SerializeField] private UnityEvent pointOfline, pointOnline;
+    [SerializeField] private UnityEvent pointOfline;
 
     private void OnCollisionEnter(Collision collision)
     {
@@ -21,7 +21,7 @@ public class DartBoardPoint : MonoBehaviour
             if (collision.transform.tag == "DartBlue") GameObject.Find("GameManager").GetComponent<GameManager>().score1 += winpoint;
             else if (collision.transform.tag == "DartRed") GameObject.Find("GameManager").GetComponent<GameManager>().score2 += winpoint;
 
-            if (PhotonNetwork.InRoom) pointOnline.Invoke();
+            if (PhotonNetwork.InRoom) GameObject.Find("GameManager").GetComponent<PhotonView>().RPC("PointOnline", RpcTarget.All);
             else pointOfline.Invoke();
 
             Destroy(collision.gameObject, 3);
