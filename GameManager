@@ -95,20 +95,20 @@ public class GameManager : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
-    public void InputTextOnline()
+    public void InputTextOnline(string playerName)
     {
         if (inputPlayer.text != null)
         {
             if (okNumber == 0)
             {
-                Player1.text = inputPlayer.text;
+                Player1.text = playerName;
                 Player1Score.gameObject.SetActive(true);
                 Player.name = Player1.text;
                 Player1Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player1Score.name] + " : " + score1;
             }
             else
             {
-                Player2.text = inputPlayer.text;
+                Player2.text = playerName;
                 Player2Score.gameObject.SetActive(true);
                 Player.name = Player2.text;
                 PlayingGameRed.SetActive(true);
@@ -116,7 +116,6 @@ public class GameManager : MonoBehaviourPunCallbacks
             }
         }
         okNumber++;
-        InputPanel1Player.SetActive(okNumber != 2);
     }
 
     private void InputTextOffline(Button okPlayer)
@@ -163,7 +162,11 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     public void Input(Button okPlayer)
     {
-        if (PhotonNetwork.IsConnected) GetComponent<PhotonView>().RPC("InputTextOnline", RpcTarget.All);
+        if (PhotonNetwork.IsConnected)
+        {
+            GetComponent<PhotonView>().RPC("InputTextOnline", RpcTarget.All, inputPlayer.text);
+            InputPanel1Player.SetActive(false);
+        }
         else InputTextOffline(okPlayer);
         okPlayer.interactable = false;
     }
