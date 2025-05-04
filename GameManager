@@ -11,7 +11,7 @@ using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviourPunCallbacks
 {
-    [SerializeField] private GameObject dartBoard, dartBlue, dartRed, InputPanel1Player, InputPanel2Players, Pause, Player, PlayingGameRed, TurnOfPlayer, GameOverPanel;
+    [SerializeField] private GameObject dartBoard, dartBlue, dartRed, InputPanel1Player, InputPanel2Players, Pause, Player,PlayingGameBlue, PlayingGameRed, TurnOfPlayer, GameOverPanel;
     [SerializeField] TextMeshProUGUI Player1Score, Player2Score, time, NumberOfDart, Player1, Player2;
     [SerializeField] private TMP_InputField inputPlayer, inputPlayer1, inputPlayer2;
     [SerializeField] private Button pauseOrSettings, okPlayer, okPlayer1, okPlayer2;
@@ -43,6 +43,7 @@ public class GameManager : MonoBehaviourPunCallbacks
             inputPlayer2.transform.GetChild(0).GetChild(1).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][inputPlayer2.name];
             okPlayer1.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][okPlayer1.name];
             okPlayer2.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][okPlayer2.name];
+            PlayingGameBlue.SetActive(true);
             PlayingGameRed.SetActive(true);
         }
 
@@ -104,6 +105,7 @@ public class GameManager : MonoBehaviourPunCallbacks
                 Player1.text = playerName;
                 Player1Score.gameObject.SetActive(true);
                 Player.name = Player1.text;
+                PlayingGameBlue.SetActive(true);
                 Player1Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player1Score.name] + " : " + score1;
             }
             else
@@ -241,6 +243,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     IEnumerator PlayGameSinglePlayer()
     {
+        PlayingGameBlue.SetActive(true);
         StartCoroutine(DestinationMovement());
         if (MenuManager.gameMode == GameMode.LimitedTime) StartCoroutine(Timee());
 
