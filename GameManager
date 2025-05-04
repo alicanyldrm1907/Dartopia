@@ -11,7 +11,7 @@ using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviourPunCallbacks
 {
-    [SerializeField] private GameObject dartBoard, dartBlue, dartRed, InputPanel1Player, InputPanel2Players, Pause, Player,PlayingGameBlue, PlayingGameRed, TurnOfPlayer, GameOverPanel;
+    [SerializeField] private GameObject dartBoard, dartBlue, dartRed, InputPanel1Player, InputPanel2Players, Pause, Player, PlayingGameBlue, PlayingGameRed, TurnOfPlayer, GameOverPanel;
     [SerializeField] TextMeshProUGUI Player1Score, Player2Score, time, NumberOfDart, Player1, Player2;
     [SerializeField] private TMP_InputField inputPlayer, inputPlayer1, inputPlayer2;
     [SerializeField] private Button pauseOrSettings, okPlayer, okPlayer1, okPlayer2;
@@ -20,6 +20,7 @@ public class GameManager : MonoBehaviourPunCallbacks
     [SerializeField] private Vector3 dartFirstPosition;
     [SerializeField] private Transform RealDestination;
     public short score1 = 0, score2 = 0;
+    GameObject currentPlayer;
     void Start()
     {
         StartCoroutine(CameraMovement());
@@ -29,6 +30,8 @@ public class GameManager : MonoBehaviourPunCallbacks
         second = 0;
         dartNumber = 10;
         turnNumber = 0;
+
+        if (PhotonNetwork.InRoom) currentPlayer = PhotonNetwork.Instantiate(Player.name, Player.transform.position, Quaternion.identity);
 
         if (PhotonNetwork.InRoom || !MenuManager.isMultiPlayer)
         {
@@ -105,7 +108,7 @@ public class GameManager : MonoBehaviourPunCallbacks
                 Player1.text = playerName;
                 Player1Score.gameObject.SetActive(true);
                 Player.name = Player1.text;
-                PlayingGameBlue.SetActive(true);
+                if (currentPlayer.GetComponent<PhotonView>().IsMine) PlayingGameBlue.SetActive(true);
                 Player1Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player1Score.name] + " : " + score1;
             }
             else
@@ -113,7 +116,7 @@ public class GameManager : MonoBehaviourPunCallbacks
                 Player2.text = playerName;
                 Player2Score.gameObject.SetActive(true);
                 Player.name = Player2.text;
-                PlayingGameRed.SetActive(true);
+                if (currentPlayer.GetComponent<PhotonView>().IsMine) PlayingGameRed.SetActive(true);
                 Player2Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player2Score.name] + " : " + score2;
             }
         }
