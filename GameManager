@@ -8,6 +8,7 @@ using UnityEngine.UI;
 using Newtonsoft.Json;
 using System.Linq;
 using UnityEngine.SceneManagement;
+using UnityEngine.Events;
 
 public class GameManager : MonoBehaviourPunCallbacks
 {
@@ -21,6 +22,8 @@ public class GameManager : MonoBehaviourPunCallbacks
     [SerializeField] private Transform RealDestination;
     public short score1 = 0, score2 = 0;
     GameObject currentPlayer;
+
+    [SerializeField] private UnityEvent selectButtonForPlayer;
     void Start()
     {
         StartCoroutine(CameraMovement());
@@ -32,6 +35,8 @@ public class GameManager : MonoBehaviourPunCallbacks
         turnNumber = 0;
 
         if (PhotonNetwork.InRoom) currentPlayer = PhotonNetwork.Instantiate(Player.name, Player.transform.position, Quaternion.identity);
+
+        selectButtonForPlayer.AddListener(() => currentPlayer.GetComponent<PlayerGameButtonSelect>().SelectButton(Player1, Player2, PlayingGameBlue, PlayingGameRed));
 
         if (PhotonNetwork.InRoom || !MenuManager.isMultiPlayer)
         {
@@ -107,16 +112,14 @@ public class GameManager : MonoBehaviourPunCallbacks
             {
                 Player1.text = playerName;
                 Player1Score.gameObject.SetActive(true);
-                Player.name = Player1.text;
-                if (currentPlayer.GetComponent<PhotonView>().IsMine) PlayingGameBlue.SetActive(true);
+                if (currentPlayer.GetComponent<PhotonView>().IsMine) currentPlayer.name = Player1.text;
                 Player1Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player1Score.name] + " : " + score1;
             }
             else
             {
                 Player2.text = playerName;
                 Player2Score.gameObject.SetActive(true);
-                Player.name = Player2.text;
-                if (currentPlayer.GetComponent<PhotonView>().IsMine) PlayingGameRed.SetActive(true);
+                if (currentPlayer.GetComponent<PhotonView>().IsMine) currentPlayer.name = Player2.text;
                 Player2Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player2Score.name] + " : " + score2;
             }
         }
@@ -171,6 +174,8 @@ public class GameManager : MonoBehaviourPunCallbacks
         {
             GetComponent<PhotonView>().RPC("InputTextOnline", RpcTarget.All, inputPlayer.text);
             InputPanel1Player.SetActive(false);
+
+            selectButtonForPlayer.Invoke();
         }
         else InputTextOffline(okPlayer);
         okPlayer.interactable = false;
