@@ -12,12 +12,12 @@ using UnityEngine.Events;
 
 public class GameManager : MonoBehaviourPunCallbacks
 {
-    [SerializeField] private GameObject dartBoard, dartBlue, dartRed, InputPanel1Player, InputPanel2Players, Pause, Player, PlayingGameBlue, PlayingGameRed, TurnOfPlayer, GameOverPanel;
-    [SerializeField] TextMeshProUGUI Player1Score, Player2Score, time, NumberOfDart, Player1, Player2;
+    [SerializeField] private GameObject dartBoard, dartBlue, dartRed, InputPanel1Player, InputPanel2Players, Pause, Player, PlayingGameBlue, PlayingGameRed, GameOverPanel;
+    [SerializeField] TextMeshProUGUI Player1Score, Player2Score, time, NumberOfDart, Player1, Player2, TurnOfPlayer;
     [SerializeField] private TMP_InputField inputPlayer, inputPlayer1, inputPlayer2;
     [SerializeField] private Button pauseOrSettings, okPlayer, okPlayer1, okPlayer2;
     [SerializeField] private Sprite pause, settings;
-    [SerializeField] private byte okNumber = 0, startMove = 0, move = 0, selectX = 0, selectY = 0, minute = 2, second = 0, dartNumber = 10, turnNumber;
+    [SerializeField] private byte okNumber, startMove = 0, move = 0, selectX = 0, selectY = 0, minute, second, dartNumber, turnNumber;
     [SerializeField] private Vector3 dartFirstPosition;
     [SerializeField] private Transform RealDestination;
     public short score1 = 0, score2 = 0;
@@ -34,10 +34,6 @@ public class GameManager : MonoBehaviourPunCallbacks
         dartNumber = 10;
         turnNumber = 0;
 
-        if (PhotonNetwork.InRoom) currentPlayer = PhotonNetwork.Instantiate(Player.name, Player.transform.position, Quaternion.identity);
-
-        selectButtonForPlayer.AddListener(() => currentPlayer.GetComponent<PlayerGameButtonSelect>().SelectButton(Player1, Player2, PlayingGameBlue, PlayingGameRed));
-
         if (PhotonNetwork.InRoom || !MenuManager.isMultiPlayer)
         {
             InputPanel1Player.SetActive(true);
@@ -53,6 +49,12 @@ public class GameManager : MonoBehaviourPunCallbacks
             okPlayer2.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][okPlayer2.name];
             PlayingGameBlue.SetActive(true);
             PlayingGameRed.SetActive(true);
+        }
+
+        if (PhotonNetwork.InRoom)
+        {
+            currentPlayer = PhotonNetwork.Instantiate(Player.name, Player.transform.position, Quaternion.identity);
+            selectButtonForPlayer.AddListener(() => currentPlayer.GetComponent<PlayerGameButtonSelect>().SelectButton(Player1, Player2, PlayingGameBlue, PlayingGameRed));
         }
 
         pauseOrSettings.image.sprite = PhotonNetwork.InRoom ? settings : pause;
@@ -106,22 +108,17 @@ public class GameManager : MonoBehaviourPunCallbacks
     [PunRPC]
     public void InputTextOnline(string playerName)
     {
-        if (inputPlayer.text != null)
+        if (okNumber == 0)
         {
-            if (okNumber == 0)
-            {
-                Player1.text = playerName;
-                Player1Score.gameObject.SetActive(true);
-                if (currentPlayer.GetComponent<PhotonView>().IsMine) currentPlayer.name = Player1.text;
-                Player1Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player1Score.name] + " : " + score1;
-            }
-            else
-            {
-                Player2.text = playerName;
-                Player2Score.gameObject.SetActive(true);
-                if (currentPlayer.GetComponent<PhotonView>().IsMine) currentPlayer.name = Player2.text;
-                Player2Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player2Score.name] + " : " + score2;
-            }
+            Player1.text = playerName;
+            Player1Score.gameObject.SetActive(true);
+            Player1Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player1Score.name] + " : " + score1;
+        }
+        else
+        {
+            Player2.text = playerName;
+            Player2Score.gameObject.SetActive(true);
+            Player2Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][Player2Score.name] + " : " + score2;
         }
         okNumber++;
     }
@@ -172,6 +169,7 @@ public class GameManager : MonoBehaviourPunCallbacks
     {
         if (PhotonNetwork.IsConnected)
         {
+            currentPlayer.GetComponent<PhotonView>().RPC("ChangeName", RpcTarget.All, inputPlayer.text);
             GetComponent<PhotonView>().RPC("InputTextOnline", RpcTarget.All, inputPlayer.text);
             InputPanel1Player.SetActive(false);
 
@@ -183,15 +181,32 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     public void SelectDestination(Button blueOrRed)
     {
-        if ((turnNumber == 0 && blueOrRed.name == "PlayingGameBlue") || (turnNumber == 1 && blueOrRed.name == "PlayingGameRed"))
+        if (PhotonNetwork.InRoom)
         {
-            if (selectX == 1) selectY = 1;
-            else if (RealDestination.gameObject.activeInHierarchy) selectX = 1;
-
-            if (selectY == 1)
+            if ((TurnOfPlayer.text.Contains(Player1.text) && blueOrRed.name == "PlayingGameBlue") || (TurnOfPlayer.text.Contains(Player2.text) && blueOrRed.name == "PlayingGameRed"))
             {
-                selectX = 0;
-                move = 1;
+                if (selectX == 1) selectY = 1;
+                else if (RealDestination.gameObject.activeInHierarchy) selectX = 1;
+
+                if (selectY == 1)
+                {
+                    selectX = 0;
+                    move = 1;
+                }
+            }
+        }
+        else
+        {
+            if ((turnNumber == 0 && blueOrRed.name == "PlayingGameBlue") || (turnNumber == 1 && blueOrRed.name == "PlayingGameRed"))
+            {
+                if (selectX == 1) selectY = 1;
+                else if (RealDestination.gameObject.activeInHierarchy) selectX = 1;
+
+                if (selectY == 1)
+                {
+                    selectX = 0;
+                    move = 1;
+                }
             }
         }
     }
@@ -209,19 +224,67 @@ public class GameManager : MonoBehaviourPunCallbacks
         NumberOfDart.gameObject.SetActive(MenuManager.gameMode == GameMode.LimitedShot);
         NumberOfDart.text = "Dart : " + dartNumber.ToString();
 
-        StartCoroutine(MenuManager.isMultiPlayer ? PlayGameMultiPlayer() : PlayGameSinglePlayer());
+        if (MenuManager.isMultiPlayer)
+        {
+            if (PhotonNetwork.IsConnected) StartCoroutine(PlayGameMultiPlayerOnline());
+            else StartCoroutine(PlayGameMultiPlayerSingleClient());
+        }
+        else StartCoroutine(PlayGameSinglePlayer());
     }
 
-    IEnumerator PlayGameMultiPlayer()
+    IEnumerator PlayGameMultiPlayerOnline()
+    {
+        GetComponent<PhotonView>().RPC(nameof(TurnofPlayer), RpcTarget.All, Player1.text);
+        StartCoroutine(DestinationMovementForOnline());
+        if (MenuManager.gameMode == GameMode.LimitedTime) StartCoroutine(Timee());
+        while (PhotonNetwork.IsConnected && PhotonNetwork.CurrentRoom.PlayerCount == 2)
+        {
+
+            yield return new WaitUntil(() => currentPlayer.GetComponent<PhotonView>().IsMine && TurnOfPlayer.text.Contains(currentPlayer.name));
+            yield return new WaitForSeconds(1);
+            Transform tempDart = PhotonNetwork.Instantiate(currentPlayer.name.Contains(Player1.text) ? dartBlue.name : dartRed.name, new Vector3(-68.4f, 21.26f, -2.7f), Quaternion.Euler(0, 0, 90)).transform;
+
+            yield return new WaitUntil(() => move == 1);
+            StartCoroutine(DartMovement(tempDart, RealDestination.position + new Vector3(1.85f, 0, 0)));
+            if (MenuManager.gameMode == GameMode.LimitedShot) GetComponent<PhotonView>().RPC(nameof(DartNumber), RpcTarget.All, dartNumber);
+            move = 0;
+
+            yield return new WaitForSeconds(1);
+            GetComponent<PhotonView>().RPC(nameof(TurnofPlayer), RpcTarget.All, TurnOfPlayer.text.Contains(Player1.text) ? Player2.text : Player1.text);
+
+            if ((minute == 0 && second == 0) || dartNumber == 0) break;
+        }
+
+        yield return new WaitForSeconds(2);
+        GameObject.Find("GamePanel").SetActive(false);
+        GameOverPanel.SetActive(true);
+
+        GameOverPanel.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = Player1.text;
+        GameOverPanel.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = Player1Score.text;
+        GameOverPanel.transform.GetChild(2).GetComponent<TextMeshProUGUI>().text = Player2.text;
+        GameOverPanel.transform.GetChild(3).GetComponent<TextMeshProUGUI>().text = Player2Score.text;
+
+        GameOverPanel.transform.GetChild(4).gameObject.SetActive(!PhotonNetwork.InRoom);
+        GameOverPanel.transform.GetChild(5).gameObject.SetActive(true);
+        GameOverPanel.transform.GetChild(5).GetComponent<RectTransform>().anchoredPosition = PhotonNetwork.InRoom ? new Vector2(0, -250) : new Vector2(500, -250);
+        GameOverPanel.transform.GetChild(4).GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][GameOverPanel.transform.GetChild(4).name];
+        GameOverPanel.transform.GetChild(5).GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][GameOverPanel.transform.GetChild(5).name];
+    }
+
+    [PunRPC]
+    public void DartNumber(byte dartNumber)
+    {
+        NumberOfDart.text = "Dart : " + (--dartNumber);
+    }
+
+    IEnumerator PlayGameMultiPlayerSingleClient()
     {
         StartCoroutine(DestinationMovement());
         if (MenuManager.gameMode == GameMode.LimitedTime) StartCoroutine(Timee());
 
         while (true)
         {
-            Transform tempDart;
-            if (PhotonNetwork.InRoom) tempDart = PhotonNetwork.Instantiate(turnNumber == 0 ? dartBlue.name : dartRed.name, new Vector3(-68.4f, 21.26f, -2.7f), Quaternion.Euler(0, 0, 90)).transform;
-            else tempDart = Instantiate(turnNumber == 0 ? dartBlue : dartRed, new Vector3(-68.4f, 21.26f, -2.7f), Quaternion.Euler(0, 0, 90)).transform;
+            Transform tempDart = Instantiate(turnNumber == 0 ? dartBlue : dartRed, new Vector3(-68.4f, 21.26f, -2.7f), Quaternion.Euler(0, 0, 90)).transform; ;
 
             yield return new WaitUntil(() => move == 1);
             StartCoroutine(DartMovement(tempDart, RealDestination.position + new Vector3(1.85f, 0, 0)));
@@ -229,7 +292,8 @@ public class GameManager : MonoBehaviourPunCallbacks
             move = 0;
 
             yield return new WaitForSeconds(1);
-            turnNumber = turnNumber == 0 ? (byte) 1 : (byte) 0;
+            turnNumber = turnNumber == 0 ? (byte)1 : (byte)0;
+
             if ((minute == 0 && second == 0) || dartNumber == 0) break;
         }
 
@@ -279,6 +343,43 @@ public class GameManager : MonoBehaviourPunCallbacks
         GameOverPanel.transform.GetChild(5).gameObject.SetActive(true);
         GameOverPanel.transform.GetChild(4).GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][GameOverPanel.transform.GetChild(4).name];
         GameOverPanel.transform.GetChild(5).GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][GameOverPanel.transform.GetChild(5).name];
+    }
+
+    [PunRPC]
+    public void TurnControl(byte turnNumber)
+    {
+        turnNumber = turnNumber == 0 ? (byte) 1 : (byte) 0;
+        Debug.Log(turnNumber);
+    }
+
+    [PunRPC]
+    public void TurnofPlayer(string turnOfPlayer)
+    {
+        TurnOfPlayer.text = turnOfPlayer + "'IN SIRASI";
+    }
+
+    IEnumerator DestinationMovementForOnline()
+    {
+        TurnOfPlayer.gameObject.SetActive(true);
+        while (true)
+        {
+            yield return new WaitUntil(() => currentPlayer.GetComponent<PhotonView>().IsMine && TurnOfPlayer.text.Contains(currentPlayer.name));
+            yield return new WaitForSeconds(1);
+            RealDestination.position = new Vector3(-75.25f, 17.9f, -2.64f);
+            RealDestination.gameObject.SetActive(true);
+
+            StartCoroutine(DestinationX());
+
+            yield return new WaitUntil(() => selectX == 1);
+            StartCoroutine(DestinationY());
+
+            yield return new WaitUntil(() => selectY == 1);
+            RealDestination.gameObject.SetActive(false);
+            selectY = 0;
+            yield return new WaitForSeconds(1);
+
+            if ((minute == 0 && second == 0) || dartNumber == 0) break;
+        }
     }
 
     IEnumerator DestinationMovement()
