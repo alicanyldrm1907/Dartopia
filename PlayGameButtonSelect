@@ -1,0 +1,23 @@
+using UnityEngine;
+using Photon.Pun;
+using Photon.Realtime;
+using TMPro;
+using UnityEngine.UI;
+
+public class PlayerGameButtonSelect : MonoBehaviourPunCallbacks
+{
+    [PunRPC]
+    public void ChangeName(string inputPlayer)
+    {
+        gameObject.name = inputPlayer;
+    }
+
+    public void SelectButton(TextMeshProUGUI Player1, TextMeshProUGUI Player2, GameObject PlayingGameBlue, GameObject PlayingGameRed)
+    {
+        if (GetComponent<PhotonView>().IsMine)
+        {
+            if (gameObject.name == Player1.text) PlayingGameBlue.SetActive(true);
+            else if (gameObject.name == Player2.text) PlayingGameRed.SetActive(true);
+        }
+    }
+}
