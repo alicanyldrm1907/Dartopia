@@ -26,6 +26,7 @@ public class GameManager : MonoBehaviourPunCallbacks
     [SerializeField] private UnityEvent selectButtonForPlayer;
     void Start()
     {
+        Application.runInBackground = true;
         StartCoroutine(CameraMovement());
         StartCoroutine(StartGame());
 
@@ -159,10 +160,16 @@ public class GameManager : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
-    public void PointOnline()
+    public void PointOnline(string dartTag, short score1, short score2)
     {
-        Player1Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"]["Player1Score"] + " : " + score1.ToString();
-        Player2Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"]["Player2Score"] + " : " + score2.ToString();
+        if (dartTag == "DartBlue")
+        {
+            Player1Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"]["Player1Score"] + " : " + score1.ToString();
+        }
+        else if (dartTag == "DartRed")
+        {
+            Player2Score.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"]["Player2Score"] + " : " + score2.ToString();
+        }
     }
 
     public void Input(Button okPlayer)
@@ -236,7 +243,7 @@ public class GameManager : MonoBehaviourPunCallbacks
     {
         GetComponent<PhotonView>().RPC(nameof(TurnofPlayer), RpcTarget.All, Player1.text);
         StartCoroutine(DestinationMovementForOnline());
-        if (MenuManager.gameMode == GameMode.LimitedTime) StartCoroutine(Timee());
+        if (MenuManager.gameMode == GameMode.LimitedTime) StartCoroutine(TimeForOnline());
         while (PhotonNetwork.IsConnected && PhotonNetwork.CurrentRoom.PlayerCount == 2)
         {
 
@@ -254,8 +261,14 @@ public class GameManager : MonoBehaviourPunCallbacks
 
             if ((minute == 0 && second == 0) || dartNumber == 0) break;
         }
+    }
 
-        yield return new WaitForSeconds(2);
+    public override void OnPlayerLeftRoom(Player otherPlayer)
+    {
+        StopCoroutine(PlayGameMultiPlayerOnline());
+        StopCoroutine(DestinationMovementForOnline());
+        StopCoroutine(TimeForOnline());
+
         GameObject.Find("GamePanel").SetActive(false);
         GameOverPanel.SetActive(true);
 
@@ -274,7 +287,8 @@ public class GameManager : MonoBehaviourPunCallbacks
     [PunRPC]
     public void DartNumber(byte dartNumber)
     {
-        NumberOfDart.text = "Dart : " + (--dartNumber);
+        this.dartNumber = (--dartNumber);
+        NumberOfDart.text = "Dart : " + this.dartNumber;
     }
 
     IEnumerator PlayGameMultiPlayerSingleClient()
@@ -346,13 +360,6 @@ public class GameManager : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
-    public void TurnControl(byte turnNumber)
-    {
-        turnNumber = turnNumber == 0 ? (byte) 1 : (byte) 0;
-        Debug.Log(turnNumber);
-    }
-
-    [PunRPC]
     public void TurnofPlayer(string turnOfPlayer)
     {
         TurnOfPlayer.text = turnOfPlayer + "'IN SIRASI";
@@ -376,7 +383,7 @@ public class GameManager : MonoBehaviourPunCallbacks
             yield return new WaitUntil(() => selectY == 1);
             RealDestination.gameObject.SetActive(false);
             selectY = 0;
-            yield return new WaitForSeconds(1);
+            yield return new WaitForSeconds(1.01f);
 
             if ((minute == 0 && second == 0) || dartNumber == 0) break;
         }
@@ -440,6 +447,53 @@ public class GameManager : MonoBehaviourPunCallbacks
         }
     }
 
+    [PunRPC]
+    public void TimeControl(byte minute, byte second)
+    {
+        if (second == 0)
+        {
+            if (minute > 0)
+            {
+                second = 59;
+                this.second = second;
+                this.minute = (--minute);
+            }
+        }
+        else
+        {
+            this.second = (--second);
+        }
+        time.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"]["Time"] + " " + string.Format("{0:00}", this.minute) + ":" + string.Format("{0:00}", this.second);
+    }
+
+    IEnumerator TimeForOnline()
+    {
+        while (minute >= 0)
+        {
+            yield return new WaitForSeconds(1);
+
+            if (minute >= 0 && PhotonNetwork.IsMasterClient) GetComponent<PhotonView>().RPC(nameof(TimeControl), RpcTarget.All, minute, second);
+        }
+
+        yield return new WaitForSeconds(2);
+        StopCoroutine(DestinationMovementForOnline());
+        StopCoroutine(PlayGameMultiPlayerOnline());
+
+        GameObject.Find("GamePanel").SetActive(false);
+        GameOverPanel.SetActive(true);
+
+        GameOverPanel.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = Player1.text;
+        GameOverPanel.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = Player1Score.text;
+        GameOverPanel.transform.GetChild(2).GetComponent<TextMeshProUGUI>().text = Player2.text;
+        GameOverPanel.transform.GetChild(3).GetComponent<TextMeshProUGUI>().text = Player2Score.text;
+
+        GameOverPanel.transform.GetChild(4).gameObject.SetActive(!PhotonNetwork.InRoom);
+        GameOverPanel.transform.GetChild(5).gameObject.SetActive(true);
+        GameOverPanel.transform.GetChild(5).GetComponent<RectTransform>().anchoredPosition = PhotonNetwork.InRoom ? new Vector2(0, -250) : new Vector2(500, -250);
+        GameOverPanel.transform.GetChild(4).GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][GameOverPanel.transform.GetChild(4).name];
+        GameOverPanel.transform.GetChild(5).GetChild(0).GetComponent<TextMeshProUGUI>().text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"][GameOverPanel.transform.GetChild(5).name];
+    }
+
     IEnumerator Timee()
     {
         while (minute >= 0)
@@ -455,7 +509,7 @@ public class GameManager : MonoBehaviourPunCallbacks
             }
             else second--;
 
-            if (minute >= 0) time.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"]["Time"] + " " + string.Format("{0:00}",minute) + ":" + string.Format("{0:00}", second);
+            if (minute >= 0) time.text = LoadingManager.languages[PlayerPrefs.GetString("language")]["Game"]["Time"] + " " + string.Format("{0:00}", minute) + ":" + string.Format("{0:00}", second);
         }
     }
 }
