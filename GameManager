@@ -26,7 +26,6 @@ public class GameManager : MonoBehaviourPunCallbacks
     [SerializeField] private UnityEvent selectButtonForPlayer;
     void Start()
     {
-        Application.runInBackground = true;
         StartCoroutine(CameraMovement());
         StartCoroutine(StartGame());
 
@@ -241,6 +240,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     IEnumerator PlayGameMultiPlayerOnline()
     {
+        Application.runInBackground = true;
         GetComponent<PhotonView>().RPC(nameof(TurnofPlayer), RpcTarget.All, Player1.text);
         StartCoroutine(DestinationMovementForOnline());
         if (MenuManager.gameMode == GameMode.LimitedTime) StartCoroutine(TimeForOnline());
