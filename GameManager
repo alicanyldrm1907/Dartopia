@@ -240,7 +240,6 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     IEnumerator PlayGameMultiPlayerOnline()
     {
-        Application.runInBackground = true;
         GetComponent<PhotonView>().RPC(nameof(TurnofPlayer), RpcTarget.All, Player1.text);
         StartCoroutine(DestinationMovementForOnline());
         if (MenuManager.gameMode == GameMode.LimitedTime) StartCoroutine(TimeForOnline());
@@ -472,7 +471,7 @@ public class GameManager : MonoBehaviourPunCallbacks
         {
             yield return new WaitForSeconds(1);
 
-            if (minute >= 0 && PhotonNetwork.IsMasterClient) GetComponent<PhotonView>().RPC(nameof(TimeControl), RpcTarget.All, minute, second);
+            if (minute >= 0) GetComponent<PhotonView>().RPC(nameof(TimeControl), RpcTarget.All, minute, second);
         }
 
         yield return new WaitForSeconds(2);
